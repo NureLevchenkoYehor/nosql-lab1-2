@@ -17,9 +17,18 @@ export const UpdateDeviceModelSchema = z.object({
   name: z.string().min(1).max(100),
 })
 
+export const GetDeviceModelsQuerySchema = z.object({
+  search: z.string().optional(),
+  sortBy: z.enum(["name"]).optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
+  take: z.coerce.number().int().positive().optional(),
+  skip: z.coerce.number().int().min(0).optional(),
+})
+
 // Input DTO
 export type CreateDeviceModelDto = z.infer<typeof CreateDeviceModelSchema>
 export type UpdateDeviceModelDto = z.infer<typeof UpdateDeviceModelSchema>
+export type GetDeviceModelsQueryDto = z.infer<typeof GetDeviceModelsQuerySchema>
 
 // Response DTO
 export type DeviceModelResponseDto = {

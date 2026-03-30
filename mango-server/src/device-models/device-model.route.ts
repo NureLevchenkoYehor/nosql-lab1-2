@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { getDb } from "../db"
 import {
   CreateDeviceModelSchema,
+  GetDeviceModelsQuerySchema,
   UpdateDeviceModelSchema,
   toDeviceModelResponse
 } from "./device-model.schema"
@@ -32,10 +33,18 @@ router.post("/", async (c) => {
 
 // GET /devices/models
 router.get("/", async (c) => {
-  const db = getDb()
-  const docs = await getDeviceModels(db)
+  const query = c.req.query()
+  const result = GetDeviceModelsQuerySchema.safeParse(query)
 
-  return c.json(docs.map(toDeviceModelResponse), 200)
+  if (!result.success) return c.json(result.error, 400)
+
+  const db = getDb()
+  const paginated = await getDeviceModels(db, result.data)
+
+  return c.json({
+    ...paginated,
+    data: paginated.data.map(toDeviceModelResponse),
+  }, 200)
 })
 
 // PATCH /devices/models/:id

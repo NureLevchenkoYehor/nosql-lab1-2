@@ -1,6 +1,6 @@
 import { Db, ObjectId } from "mongodb"
-import { DeviceModel, CreateDeviceModelDto, UpdateDeviceModelDto } from "./device-model.schema"
-import { stripUndefined } from "../common/utils"
+import { DeviceModel, CreateDeviceModelDto, UpdateDeviceModelDto, GetDeviceModelsQueryDto } from "./device-model.schema"
+import { PaginatedResponseDto, stripUndefined } from "../common/utils"
 
 const COLLECTION = "device-models"
 
@@ -17,8 +17,41 @@ export async function createDeviceModel(db: Db, dto: CreateDeviceModelDto): Prom
   return { _id: result.insertedId, ...doc }
 }
 
-export async function getDeviceModels(db: Db): Promise<DeviceModel[]> {
-  return db.collection<DeviceModel>(COLLECTION).find({ archivedAt: null }).toArray()
+export async function getDeviceModels(
+  db: Db,
+  query: GetDeviceModelsQueryDto
+): Promise<PaginatedResponseDto<DeviceModel>> {
+  const filter: Record<string, unknown> = { archivedAt: null }
+
+  if (query.search) {
+    filter["name"] = { $regex: query.search, $options: "i" }
+  }
+
+  const sortField = query.sortBy ?? "name"
+  const sortDirection = query.sortOrder === "desc" ? -1 : 1
+  const skip = query.skip ?? 0
+  const take = query.take ?? 20
+
+  const [result] = await db.collection<DeviceModel>(COLLECTION).aggregate([
+    { $match: filter },
+    {
+      $facet: {
+        data: [
+          { $sort: { [sortField]: sortDirection } },
+          { $skip: skip },
+          { $limit: take },
+        ],
+        total: [{ $count: "count" }],
+      }
+    }
+  ]).toArray()
+
+  const total = result.total[0]?.count ?? 0
+
+  return {
+    data: result.data as DeviceModel[],
+    total,
+  }
 }
 
 export async function getDeviceModelById(db: Db, id: string): Promise<DeviceModel | null> {

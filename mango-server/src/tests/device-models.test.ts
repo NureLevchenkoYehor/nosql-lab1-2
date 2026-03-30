@@ -58,19 +58,117 @@ describe("GET /devices/models", () => {
     })
 
     const res = await app.request("/devices/models")
-
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(Array.isArray(body)).toBe(true)
-    expect(body.length).toBeGreaterThan(0)
+    expect(body.data.length).toBe(1)
+    expect(body.total).toBe(1)
   })
 
   it("повертає порожній список якщо моделей немає", async () => {
     const res = await app.request("/devices/models")
-
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual([])
+    expect(body.data).toEqual([])
+    expect(body.total).toBe(0)
+  })
+})
+
+describe("GET /devices/models search", () => {
+  it("шукає за назвою", async () => {
+    await app.request("/devices/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "SoundSensor v1" }),
+    })
+    await app.request("/devices/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "NoiseMeter v1" }),
+    })
+
+    const res = await app.request("/devices/models?search=sound")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.length).toBe(1)
+    expect(body.total).toBe(1)
+    expect(body.data[0].name).toBe("SoundSensor v1")
+  })
+})
+
+describe("GET /devices/models sorting", () => {
+  it("сортує за назвою A-Z", async () => {
+    await app.request("/devices/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Zebra" }),
+    })
+    await app.request("/devices/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Alpha" }),
+    })
+
+    const res = await app.request("/devices/models?sortBy=name&sortOrder=asc")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data[0].name).toBe("Alpha")
+    expect(body.data[1].name).toBe("Zebra")
+    expect(body.total).toBe(2)
+  })
+
+  it("сортує за назвою Z-A", async () => {
+    await app.request("/devices/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Alpha" }),
+    })
+    await app.request("/devices/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Zebra" }),
+    })
+
+    const res = await app.request("/devices/models?sortBy=name&sortOrder=desc")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data[0].name).toBe("Zebra")
+    expect(body.data[1].name).toBe("Alpha")
+    expect(body.total).toBe(2)
+  })
+})
+
+describe("GET /devices/models pagination", () => {
+  it("повертає правильну кількість записів через take", async () => {
+    for (const name of ["Model A", "Model B", "Model C"]) {
+      await app.request("/devices/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      })
+    }
+
+    const res = await app.request("/devices/models?take=2")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.length).toBe(2)
+    expect(body.total).toBe(3)
+  })
+
+  it("пропускає записи через skip", async () => {
+    for (const name of ["Model A", "Model B", "Model C"]) {
+      await app.request("/devices/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      })
+    }
+
+    const res = await app.request("/devices/models?skip=1&take=10&sortBy=name&sortOrder=asc")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.length).toBe(2)
+    expect(body.total).toBe(3)
+    expect(body.data[0].name).toBe("Model B")
   })
 })
 
@@ -93,7 +191,7 @@ describe("PATCH /devices/models/:id", () => {
 
     const list = await app.request("/devices/models")
     const body = await list.json()
-    expect(body[0].name).toBe("SoundSensor v2")
+    expect(body.data[0].name).toBe("SoundSensor v2")
   })
 
   it("повертає 404 якщо модель не існує", async () => {
@@ -124,7 +222,7 @@ describe("DELETE /devices/models/:id", () => {
 
     const list = await app.request("/devices/models")
     const body = await list.json()
-    expect(body).toEqual([])
+    expect(body.data).toEqual([])
   })
 
   it("повертає 404 якщо модель не існує", async () => {
