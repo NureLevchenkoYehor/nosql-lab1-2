@@ -1,9 +1,10 @@
 import { MongoClient, Db } from "mongodb"
 
-const client = new MongoClient(Bun.env.MONGO_URI!)
+let client: MongoClient
 let db: Db
 
 export async function connectDb(dbName: string): Promise<Db> {
+  client = new MongoClient(Bun.env.MONGO_URI!)
   await client.connect()
   db = client.db(dbName)
   console.log("MongoDB connected")
