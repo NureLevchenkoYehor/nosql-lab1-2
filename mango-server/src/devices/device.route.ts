@@ -6,6 +6,7 @@ import {
   UpdateDeviceStateSchema,
   toDeviceResponse,
   DeviceCreatedResponseDto,
+  GetDevicesQuerySchema,
 } from "./device.schema"
 import {
   createDevice,
@@ -55,8 +56,13 @@ router.post("/", async (c) => {
 
 // GET /devices
 router.get("/", async (c) => {
+  const query = c.req.query()
+  const result = GetDevicesQuerySchema.safeParse(query)
+
+  if (!result.success) return c.json(result.error, 400)
+
   const db = getDb()
-  const docs = await getDevices(db)
+  const docs = await getDevices(db, result.data)
 
   return c.json(docs.map(toDeviceResponse), 200)
 })
@@ -167,7 +173,6 @@ router.post("/:id/location", async (c) => {
 
   return c.body(null, 204)
 })
-
 
 // POST /devices/:id/acoustic-measurements
 router.post("/:id/acoustic-measurements", async (c) => {

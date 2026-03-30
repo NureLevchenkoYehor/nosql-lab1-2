@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb"
 import { z } from "zod"
+import { isDeviceActive } from "../common/utils"
 
 export const DEVICE_STATUSES = ["in_stock", "deployed", "fixing", "decommissioned"] as const
 export type DeviceStatus = typeof DEVICE_STATUSES[number]
@@ -34,10 +35,30 @@ export const UpdateDeviceStateSchema = z.object({
   recordedAt: z.iso.datetime(),
 })
 
+export const GetDevicesQuerySchema = z.object({
+    // Фільтрація
+    modelId: z.string().length(24).optional(),
+    status: z.enum(DEVICE_STATUSES).optional(),
+    active: z.enum(["true", "false"]).optional(),
+
+    // Частковий пошук
+    serial: z.string().optional(),
+    name: z.string().optional(),
+
+    // Сортування
+    sortBy: z.enum(["modelId", "serialNumber", "customName", "batteryLevel"]).optional(),
+    sortOrder: z.enum(["asc", "desc"]).optional(),
+
+    // Пагінація
+    take: z.coerce.number().int().positive().optional(),
+    skip: z.coerce.number().int().min(0).optional(),
+})
+
 // Input DTO
 export type CreateDeviceDto = z.infer<typeof CreateDeviceSchema>
 export type UpdateDeviceDto = z.infer<typeof UpdateDeviceSchema>
 export type UpdateDeviceStateDto = z.infer<typeof UpdateDeviceStateSchema>
+export type GetDevicesQueryDto = z.infer<typeof GetDevicesQuerySchema>
 
 // Response DTO
 export type DeviceResponseDto = {
@@ -48,6 +69,7 @@ export type DeviceResponseDto = {
   customName?: string
   batteryLevel: number | null
   lastSeenAt: Date | null
+  isActive: boolean
 }
 
 export type DeviceCreatedResponseDto = DeviceResponseDto & {
@@ -64,5 +86,6 @@ export function toDeviceResponse(doc: Device): DeviceResponseDto {
     customName: doc.customName,
     batteryLevel: doc.batteryLevel,
     lastSeenAt: doc.lastSeenAt,
+    isActive: isDeviceActive(doc.lastSeenAt)
   }
 }

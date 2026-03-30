@@ -93,6 +93,185 @@ describe("GET /devices", () => {
   })
 })
 
+describe("GET /devices filtering", () => {
+  it("фільтрує за статусом", async () => {
+    const model = await createModel()
+    const device = await createDevice(model.id)
+
+    await app.request(`/devices/${device.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "deployed" }),
+    })
+
+    const res = await app.request("/devices?status=deployed")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.length).toBe(1)
+    expect(body[0].status).toBe("deployed")
+  })
+
+  it("фільтрує за моделлю", async () => {
+    const model1 = await createModel()
+    const model2 = await (async () => {
+      const res = await app.request("/devices/models", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "SoundSensor v2" }),
+      })
+      return res.json()
+    })()
+
+    await createDevice(model1.id)
+    await app.request("/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelId: model2.id, serialNumber: "SN-002" }),
+    })
+
+    const res = await app.request(`/devices?modelId=${model1.id}`)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.length).toBe(1)
+    expect(body[0].modelId).toBe(model1.id)
+  })
+
+  it("фільтрує неактивні пристрої", async () => {
+    const model = await createModel()
+    const device = await createDevice(model.id)
+
+    // Пристрій без lastSeenAt вважається неактивним
+    const res = await app.request("/devices?active=false")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.some((d: { id: string }) => d.id === device.id)).toBe(true)
+  })
+
+  it("не повертає неактивні пристрої при active=true", async () => {
+    const model = await createModel()
+    const device = await createDevice(model.id)
+
+    const res = await app.request("/devices?active=true")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.some((d: { id: string }) => d.id === device.id)).toBe(false)
+  })
+})
+
+describe("GET /devices search", () => {
+  it("шукає за серійним номером", async () => {
+    const model = await createModel()
+    await createDevice(model.id)
+    await app.request("/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelId: model.id, serialNumber: "XZ-999" }),
+    })
+
+    const res = await app.request("/devices?serial=SN")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.length).toBe(1)
+    expect(body[0].serialNumber).toBe("SN-001")
+  })
+
+  it("шукає за користувацькою назвою", async () => {
+    const model = await createModel()
+    await app.request("/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelId: model.id, serialNumber: "SN-001", customName: "Центр міста" }),
+    })
+    await app.request("/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelId: model.id, serialNumber: "SN-002", customName: "Парк" }),
+    })
+
+    const res = await app.request("/devices?name=центр")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.length).toBe(1)
+    expect(body[0].customName).toBe("Центр міста")
+  })
+})
+
+describe("GET /devices sorting", () => {
+  it("сортує за серійним номером A-Z", async () => {
+    const model = await createModel()
+    await app.request("/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelId: model.id, serialNumber: "SN-002" }),
+    })
+    await app.request("/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelId: model.id, serialNumber: "SN-001" }),
+    })
+
+    const res = await app.request("/devices?sortBy=serialNumber&sortOrder=asc")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body[0].serialNumber).toBe("SN-001")
+    expect(body[1].serialNumber).toBe("SN-002")
+  })
+
+  it("сортує за серійним номером Z-A", async () => {
+    const model = await createModel()
+    await app.request("/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelId: model.id, serialNumber: "SN-001" }),
+    })
+    await app.request("/devices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ modelId: model.id, serialNumber: "SN-002" }),
+    })
+
+    const res = await app.request("/devices?sortBy=serialNumber&sortOrder=desc")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body[0].serialNumber).toBe("SN-002")
+    expect(body[1].serialNumber).toBe("SN-001")
+  })
+})
+
+describe("GET /devices pagination", () => {
+  it("повертає правильну кількість записів через take", async () => {
+    const model = await createModel()
+    for (const sn of ["SN-001", "SN-002", "SN-003"]) {
+      await app.request("/devices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modelId: model.id, serialNumber: sn }),
+      })
+    }
+
+    const res = await app.request("/devices?take=2")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.length).toBe(2)
+  })
+
+  it("пропускає записи через skip", async () => {
+    const model = await createModel()
+    for (const sn of ["SN-001", "SN-002", "SN-003"]) {
+      await app.request("/devices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modelId: model.id, serialNumber: sn }),
+      })
+    }
+
+    const res = await app.request("/devices?skip=1&take=10&sortBy=serialNumber&sortOrder=asc")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body[0].serialNumber).toBe("SN-002")
+  })
+})
+
 describe("PATCH /devices/:id", () => {
   it("оновлює статус пристрою", async () => {
     const model = await createModel()
