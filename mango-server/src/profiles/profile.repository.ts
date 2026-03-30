@@ -1,6 +1,6 @@
 import { Db, ObjectId, Sort } from "mongodb"
 import { Profile, CreateProfileDto, UpdateProfileDto, GetProfilesQueryDto } from "./profile.schema"
-import { stripUndefined } from "../common/utils"
+import { PaginatedResponseDto, stripUndefined } from "../common/utils"
 import { hashPassword } from "../common/crypto"
 
 const COLLECTION = "profiles"
@@ -22,7 +22,7 @@ export async function createProfile(db: Db, dto: CreateProfileDto): Promise<Prof
   return { _id: result.insertedId, ...doc }
 }
 
-export async function getProfiles(db: Db, query: GetProfilesQueryDto): Promise<Profile[]> {
+export async function getProfiles(db: Db, query: GetProfilesQueryDto): Promise<PaginatedResponseDto<Profile>> {
   const filter: Record<string, unknown> = { archivedAt: null }
 
   if (query.search) {
@@ -43,12 +43,27 @@ export async function getProfiles(db: Db, query: GetProfilesQueryDto): Promise<P
   const skip = query.skip ?? 0
   const take = query.take ?? 20
 
-  return db.collection<Profile>(COLLECTION)
-    .find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(take)
-    .toArray()
+  const [result] = await db.collection<Profile>(COLLECTION).aggregate([
+    { $match: filter },
+    {
+      $facet: {
+        data: [
+          { $sort: sort },
+          { $skip: skip },
+          { $limit: take },
+        ],
+        total: [{ $count: "count" }],
+      }
+    }
+  ]).toArray()
+
+
+  const total = result.total[0]?.count ?? 0
+
+  return {
+    data: result.data as Profile[],
+    total,
+  }
 }
 
 export async function getProfileById(db: Db, id: string): Promise<Profile | null> {

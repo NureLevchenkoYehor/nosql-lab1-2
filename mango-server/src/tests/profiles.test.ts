@@ -62,11 +62,12 @@ describe("GET /profiles", () => {
     })
 
     const res = await app.request("/profiles")
-
     expect(res.status).toBe(200)
+
     const body = await res.json()
-    expect(Array.isArray(body)).toBe(true)
-    expect(body.length).toBeGreaterThan(0)
+    expect(Array.isArray(body.data)).toBe(true)
+    expect(body.data.length).toBeGreaterThan(0)
+    expect(body.total).toBeGreaterThan(0)
   })
 
   it("повертає порожній список якщо профілів немає", async () => {
@@ -74,7 +75,8 @@ describe("GET /profiles", () => {
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual([])
+    expect(body.data).toEqual([])
+    expect(body.total).toBe(0)
   })
 })
 
@@ -86,8 +88,8 @@ describe("GET /profiles search", () => {
     const res = await app.request("/profiles?search=іван")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.length).toBe(1)
-    expect(body[0].login).toBe("ivan")
+    expect(body.data.length).toBe(1)
+    expect(body.data[0].login).toBe("ivan")
   })
 
   it("шукає за прізвищем", async () => {
@@ -97,8 +99,8 @@ describe("GET /profiles search", () => {
     const res = await app.request("/profiles?search=петренко")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.length).toBe(1)
-    expect(body[0].login).toBe("ivan")
+    expect(body.data.length).toBe(1)
+    expect(body.data[0].login).toBe("ivan")
   })
 
   it("шукає за логіном", async () => {
@@ -108,8 +110,8 @@ describe("GET /profiles search", () => {
     const res = await app.request("/profiles?login=ivan")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.length).toBe(1)
-    expect(body[0].login).toBe("ivan")
+    expect(body.data.length).toBe(1)
+    expect(body.data[0].login).toBe("ivan")
   })
 })
 
@@ -121,8 +123,8 @@ describe("GET /profiles sorting", () => {
     const res = await app.request("/profiles?sortBy=login&sortOrder=asc")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body[0].login).toBe("alpha")
-    expect(body[1].login).toBe("zebra")
+    expect(body.data[0].login).toBe("alpha")
+    expect(body.data[1].login).toBe("zebra")
   })
 
   it("сортує за логіном Z-A", async () => {
@@ -132,8 +134,8 @@ describe("GET /profiles sorting", () => {
     const res = await app.request("/profiles?sortBy=login&sortOrder=desc")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body[0].login).toBe("zebra")
-    expect(body[1].login).toBe("alpha")
+    expect(body.data[0].login).toBe("zebra")
+    expect(body.data[1].login).toBe("alpha")
   })
 })
 
@@ -146,7 +148,8 @@ describe("GET /profiles pagination", () => {
     const res = await app.request("/profiles?take=2")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.length).toBe(2)
+    expect(body.data.length).toBe(2)
+    expect(body.total).toBe(3)
   })
 
   it("пропускає записи через skip", async () => {
@@ -157,7 +160,7 @@ describe("GET /profiles pagination", () => {
     const res = await app.request("/profiles?skip=1&take=10&sortBy=login&sortOrder=asc")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body[0].login).toBe("user2")
+    expect(body.data[0].login).toBe("user2")
   })
 })
 
