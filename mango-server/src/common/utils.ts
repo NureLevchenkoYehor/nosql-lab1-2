@@ -11,3 +11,18 @@ export function isDeviceActive(lastSeenAt: Date | null): boolean {
   const thresholdMs = DEVICE_ACTIVE_THRESHOLD_DAYS * 86400000
   return Math.abs(Date.now() - new Date(lastSeenAt).getTime()) <= thresholdMs
 }
+
+export type PaginatedResponseDto<T> = {
+  data: T[]
+  total: number
+}
+
+export function toPaginatedResponse<T>(
+  data: T[],
+  total: number,
+): PaginatedResponseDto<T> {
+  return {
+    data,
+    total,
+  }
+}
