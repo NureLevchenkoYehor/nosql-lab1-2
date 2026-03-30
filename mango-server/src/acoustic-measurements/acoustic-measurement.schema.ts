@@ -1,5 +1,6 @@
 import { ObjectId } from "mongodb"
 import { z } from "zod"
+import { PaginatedResponseDto } from "../common/utils"
 
 // MongoDB документ
 export type AcousticMeasurement = {
@@ -52,6 +53,13 @@ export type AcousticMeasurementResponseDto = {
   avgDba: number
   intervalS: number
   measuredAt: Date
+}
+
+export type AcousticMeasurementsPaginatedDto = PaginatedResponseDto<PositionedAcousticMeasurement> & {
+  stats: {
+    maxDba: number | null
+    avgDba: number | null
+  }
 }
 
 // Маппінг

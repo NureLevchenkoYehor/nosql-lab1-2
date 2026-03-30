@@ -148,9 +148,11 @@ describe("GET /acoustic-measurements", () => {
     expect(body.data.length).toBe(1)
     expect(body.total).toBe(1)
     expect(body.data[0].location.longitude).toBe(32.05)
+    expect(body.stats.maxDba).toBe(80)
+    expect(body.stats.avgDba).toBe(65)
   })
 
-  it("повертає порожній список якщо немає вимірів у області", async () => {
+  it("повертає null stats якщо немає вимірів у області", async () => {
     const res = await app.request(
       "/acoustic-measurements?longitude=0&latitude=0&radius=1"
     )
@@ -159,6 +161,8 @@ describe("GET /acoustic-measurements", () => {
     const body = await res.json()
     expect(body.data).toEqual([])
     expect(body.total).toBe(0)
+    expect(body.stats.maxDba).toBeNull()
+    expect(body.stats.avgDba).toBeNull()
   })
 
   it("повертає 400 якщо параметри не передані", async () => {
@@ -196,6 +200,8 @@ describe("GET /acoustic-measurements pagination", () => {
     const body = await res.json()
     expect(body.data.length).toBe(2)
     expect(body.total).toBe(3)
+    expect(body.stats.maxDba).toBe(80)
+    expect(body.stats.avgDba).toBe(65)
   })
 
   it("пропускає записи через skip", async () => {
@@ -227,6 +233,7 @@ describe("GET /acoustic-measurements pagination", () => {
     expect(body.data.length).toBe(2)
     expect(body.total).toBe(3)
     expect(body.data[0].maxDba).toBe(81)
+    expect(body.stats.maxDba).toBe(82)
   })
 })
 
@@ -261,5 +268,6 @@ describe("GET /acoustic-measurements sorting", () => {
     expect(body.total).toBe(3)
     expect(body.data[0].maxDba).toBe(70)
     expect(body.data[2].maxDba).toBe(90)
+    expect(body.stats.maxDba).toBe(90)
   })
 })

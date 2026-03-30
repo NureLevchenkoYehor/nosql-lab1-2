@@ -1,11 +1,11 @@
 import { Db, ObjectId, Sort } from "mongodb"
 import {
   AcousticMeasurement,
+  AcousticMeasurementsPaginatedDto,
   CreateAcousticMeasurementDto,
   GetAcousticMeasurementsQueryDto,
   PositionedAcousticMeasurement
 } from "./acoustic-measurement.schema"
-import { PaginatedResponseDto } from "../common/utils"
 
 const COLLECTION = "records"
 
@@ -32,7 +32,7 @@ export async function createAcousticMeasurement(
 export async function getAcousticMeasurements(
   db: Db,
   query: GetAcousticMeasurementsQueryDto
-): Promise<PaginatedResponseDto<PositionedAcousticMeasurement>> {
+): Promise<AcousticMeasurementsPaginatedDto> {
   const radiusFilter = (centerPoint: number, radius: number) => {
     return {
       $gte: centerPoint - radius,
@@ -89,6 +89,15 @@ export async function getAcousticMeasurements(
           { $limit: take },
         ],
         total: [{ $count: "count" }],
+        stats: [
+          {
+            $group: {
+              _id: null,
+              maxDba: { $max: "$maxDba" },
+              avgDba: { $avg: "$avgDba" },
+            }
+          }
+        ]
       }
     }
   ]
@@ -97,9 +106,14 @@ export async function getAcousticMeasurements(
     .aggregate(pipeline).toArray()
 
   const total = result.total[0]?.count ?? 0
+  const stats = {
+    maxDba: result.stats[0]?.maxDba ?? null,
+    avgDba: result.stats[0]?.avgDba ?? null,
+  }
 
   return {
     data: result.data as PositionedAcousticMeasurement[],
     total,
+    stats
   }
 }
