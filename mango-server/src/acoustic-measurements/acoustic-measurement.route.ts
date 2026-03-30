@@ -18,9 +18,12 @@ router.get("/", async (c) => {
   if (!result.success) return c.json(result.error, 400)
 
   const db = getDb()
-  const docs = await getAcousticMeasurements(db, result.data)
+  const paginated = await getAcousticMeasurements(db, result.data)
 
-  return c.json(docs.map(toAcousticMeasurementResponse), 200)
+  return c.json({
+    ...paginated,
+    data: paginated.data.map(toAcousticMeasurementResponse),
+  }, 200)
 })
 
 export { router as acousticMeasurementsRouter }

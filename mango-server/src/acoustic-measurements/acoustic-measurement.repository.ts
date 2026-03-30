@@ -1,10 +1,11 @@
-import { Db, ObjectId } from "mongodb"
+import { Db, ObjectId, Sort } from "mongodb"
 import {
   AcousticMeasurement,
   CreateAcousticMeasurementDto,
   GetAcousticMeasurementsQueryDto,
   PositionedAcousticMeasurement
 } from "./acoustic-measurement.schema"
+import { PaginatedResponseDto } from "../common/utils"
 
 const COLLECTION = "records"
 
@@ -31,7 +32,7 @@ export async function createAcousticMeasurement(
 export async function getAcousticMeasurements(
   db: Db,
   query: GetAcousticMeasurementsQueryDto
-): Promise<(AcousticMeasurement & { longitude: number, latitude: number })[]> {
+): Promise<PaginatedResponseDto<PositionedAcousticMeasurement>> {
   const radiusFilter = (centerPoint: number, radius: number) => {
     return {
       $gte: centerPoint - radius,
@@ -52,6 +53,12 @@ export async function getAcousticMeasurements(
     matchStage["measuredAt"] = timeFilter
   }
 
+  const sortField = query.sortBy ?? "measuredAt"
+  const sortDirection = query.sortOrder === "desc" ? -1 : 1
+  const sort: Sort = { [sortField]: sortDirection }
+
+  const skip = query.skip ?? 0
+  const take = query.take ?? 20
 
   const pipeline = [
     {
@@ -74,9 +81,25 @@ export async function getAcousticMeasurements(
         latitude: "$location.latitude",
       }
     },
+    {
+      $facet: {
+        data: [
+          { $sort: sort },
+          { $skip: skip },
+          { $limit: take },
+        ],
+        total: [{ $count: "count" }],
+      }
+    }
   ]
 
-  const records = await db.collection<AcousticMeasurement>(COLLECTION).aggregate(pipeline).toArray() as PositionedAcousticMeasurement[]
+  const [result] = await db.collection<AcousticMeasurement>(COLLECTION)
+    .aggregate(pipeline).toArray()
 
-  return records;
+  const total = result.total[0]?.count ?? 0
+
+  return {
+    data: result.data as PositionedAcousticMeasurement[],
+    total,
+  }
 }

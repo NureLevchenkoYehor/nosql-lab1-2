@@ -30,6 +30,10 @@ export const GetAcousticMeasurementsQuerySchema = z.object({
   radius: z.coerce.number().positive(),
   from: z.iso.datetime().optional(),
   to: z.iso.datetime().optional(),
+  sortBy: z.enum(["measuredAt", "maxDba", "avgDba"]).optional(),
+  sortOrder: z.enum(["asc", "desc"]).optional(),
+  take: z.coerce.number().int().positive().optional(),
+  skip: z.coerce.number().int().min(0).optional(),
 })
 
 // Input DTO
