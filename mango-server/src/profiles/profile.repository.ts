@@ -1,5 +1,5 @@
-import { Db, ObjectId } from "mongodb"
-import { Profile, CreateProfileDto, UpdateProfileDto } from "./profile.schema"
+import { Db, ObjectId, Sort } from "mongodb"
+import { Profile, CreateProfileDto, UpdateProfileDto, GetProfilesQueryDto } from "./profile.schema"
 import { stripUndefined } from "../common/utils"
 import { hashPassword } from "../common/crypto"
 
@@ -22,8 +22,33 @@ export async function createProfile(db: Db, dto: CreateProfileDto): Promise<Prof
   return { _id: result.insertedId, ...doc }
 }
 
-export async function getProfiles(db: Db): Promise<Profile[]> {
-  return db.collection<Profile>(COLLECTION).find({ archivedAt: null }).toArray()
+export async function getProfiles(db: Db, query: GetProfilesQueryDto): Promise<Profile[]> {
+  const filter: Record<string, unknown> = { archivedAt: null }
+
+  if (query.search) {
+    filter["$or"] = [
+      { name: { $regex: query.search, $options: "i" } },
+      { surname: { $regex: query.search, $options: "i" } },
+    ]
+  }
+
+  if (query.login) {
+    filter["login"] = { $regex: query.login, $options: "i" }
+  }
+
+  const sortField = query.sortBy ?? "login"
+  const sortDirection = query.sortOrder === "desc" ? -1 : 1
+  const sort: Sort = { [sortField]: sortDirection }
+
+  const skip = query.skip ?? 0
+  const take = query.take ?? 20
+
+  return db.collection<Profile>(COLLECTION)
+    .find(filter)
+    .sort(sort)
+    .skip(skip)
+    .limit(take)
+    .toArray()
 }
 
 export async function getProfileById(db: Db, id: string): Promise<Profile | null> {

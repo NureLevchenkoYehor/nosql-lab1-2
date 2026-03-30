@@ -2,6 +2,7 @@ import { Hono } from "hono"
 import { getDb } from "../db"
 import {
   CreateProfileSchema,
+  GetProfilesQuerySchema,
   UpdateProfileSchema,
   toProfileResponse
 } from "./profile.schema"
@@ -32,10 +33,16 @@ router.post("/", async (c) => {
 
 // GET /profiles
 router.get("/", async (c) => {
+  const query = c.req.query()
+  const result = GetProfilesQuerySchema.safeParse(query)
+
+  if (!result.success) return c.json(result.error, 400)
+
   const db = getDb()
-  const docs = await getProfiles(db)
+  const docs = await getProfiles(db, result.data)
 
   return c.json(docs.map(toProfileResponse), 200)
+
 })
 
 // GET /profiles/:id

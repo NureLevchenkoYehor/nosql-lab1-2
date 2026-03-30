@@ -77,3 +77,96 @@ describe("GET /profiles", () => {
     expect(body).toEqual([])
   })
 })
+
+describe("GET /profiles search", () => {
+  it("шукає за ім'ям", async () => {
+    await createProfile("ivan", "Іван", "Петренко")
+    await createProfile("petro", "Петро", "Сидоренко")
+
+    const res = await app.request("/profiles?search=іван")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.length).toBe(1)
+    expect(body[0].login).toBe("ivan")
+  })
+
+  it("шукає за прізвищем", async () => {
+    await createProfile("ivan", "Іван", "Петренко")
+    await createProfile("petro", "Петро", "Сидоренко")
+
+    const res = await app.request("/profiles?search=петренко")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.length).toBe(1)
+    expect(body[0].login).toBe("ivan")
+  })
+
+  it("шукає за логіном", async () => {
+    await createProfile("ivan")
+    await createProfile("petro")
+
+    const res = await app.request("/profiles?login=ivan")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.length).toBe(1)
+    expect(body[0].login).toBe("ivan")
+  })
+})
+
+describe("GET /profiles sorting", () => {
+  it("сортує за логіном A-Z", async () => {
+    await createProfile("zebra")
+    await createProfile("alpha")
+
+    const res = await app.request("/profiles?sortBy=login&sortOrder=asc")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body[0].login).toBe("alpha")
+    expect(body[1].login).toBe("zebra")
+  })
+
+  it("сортує за логіном Z-A", async () => {
+    await createProfile("alpha")
+    await createProfile("zebra")
+
+    const res = await app.request("/profiles?sortBy=login&sortOrder=desc")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body[0].login).toBe("zebra")
+    expect(body[1].login).toBe("alpha")
+  })
+})
+
+describe("GET /profiles pagination", () => {
+  it("повертає правильну кількість записів через take", async () => {
+    await createProfile("user1")
+    await createProfile("user2")
+    await createProfile("user3")
+
+    const res = await app.request("/profiles?take=2")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.length).toBe(2)
+  })
+
+  it("пропускає записи через skip", async () => {
+    await createProfile("user1")
+    await createProfile("user2")
+    await createProfile("user3")
+
+    const res = await app.request("/profiles?skip=1&take=10&sortBy=login&sortOrder=asc")
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body[0].login).toBe("user2")
+  })
+})
+
+
+async function createProfile(login: string, name?: string, surname?: string) {
+  const res = await app.request("/profiles", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ login, password: "admin123!", name, surname }),
+  })
+  return res.json()
+}

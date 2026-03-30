@@ -29,9 +29,24 @@ export const UpdateProfileSchema = z.object({
   email: z.string().max(100).optional(),
 })
 
+export const GetProfilesQuerySchema = z.object({
+    // Частковий пошук
+    search: z.string().optional(),
+    login: z.string().optional(),
+
+    // Сортування
+    sortBy: z.enum(["name", "surname", "login", "phone", "email"]).optional(),
+    sortOrder: z.enum(["asc", "desc"]).optional(),
+
+    // Пагінація
+    take: z.coerce.number().int().positive().optional(),
+    skip: z.coerce.number().int().min(0).optional(),
+})
+
 // Input DTO
 export type CreateProfileDto = z.infer<typeof CreateProfileSchema>
 export type UpdateProfileDto = z.infer<typeof UpdateProfileSchema>
+export type GetProfilesQueryDto = z.infer<typeof GetProfilesQuerySchema>
 
 // Response DTO
 export type ProfileResponseDto = {
