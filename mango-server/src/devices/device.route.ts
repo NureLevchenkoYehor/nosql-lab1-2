@@ -62,9 +62,12 @@ router.get("/", async (c) => {
   if (!result.success) return c.json(result.error, 400)
 
   const db = getDb()
-  const docs = await getDevices(db, result.data)
+  const paginated = await getDevices(db, result.data)
 
-  return c.json(docs.map(toDeviceResponse), 200)
+  return c.json({
+    ...paginated,
+    data: paginated.data.map(toDeviceResponse),
+  }, 200)
 })
 
 // GET /devices/:id

@@ -80,8 +80,9 @@ describe("GET /devices", () => {
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(Array.isArray(body)).toBe(true)
-    expect(body.length).toBeGreaterThan(0)
+    expect(Array.isArray(body.data)).toBe(true)
+    expect(body.data.length).toBeGreaterThan(0)
+    expect(body.total).toBeGreaterThan(0)
   })
 
   it("повертає порожній список якщо пристроїв немає", async () => {
@@ -89,7 +90,8 @@ describe("GET /devices", () => {
 
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body).toEqual([])
+    expect(body.data).toEqual([])
+    expect(body.total).toBe(0)
   })
 })
 
@@ -107,8 +109,8 @@ describe("GET /devices filtering", () => {
     const res = await app.request("/devices?status=deployed")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.length).toBe(1)
-    expect(body[0].status).toBe("deployed")
+    expect(body.data.length).toBe(1)
+    expect(body.data[0].status).toBe("deployed")
   })
 
   it("фільтрує за моделлю", async () => {
@@ -132,8 +134,8 @@ describe("GET /devices filtering", () => {
     const res = await app.request(`/devices?modelId=${model1.id}`)
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.length).toBe(1)
-    expect(body[0].modelId).toBe(model1.id)
+    expect(body.data.length).toBe(1)
+    expect(body.data[0].modelId).toBe(model1.id)
   })
 
   it("фільтрує неактивні пристрої", async () => {
@@ -144,7 +146,7 @@ describe("GET /devices filtering", () => {
     const res = await app.request("/devices?active=false")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.some((d: { id: string }) => d.id === device.id)).toBe(true)
+    expect(body.data.some((d: { id: string }) => d.id === device.id)).toBe(true)
   })
 
   it("не повертає неактивні пристрої при active=true", async () => {
@@ -154,7 +156,7 @@ describe("GET /devices filtering", () => {
     const res = await app.request("/devices?active=true")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.some((d: { id: string }) => d.id === device.id)).toBe(false)
+    expect(body.data.some((d: { id: string }) => d.id === device.id)).toBe(false)
   })
 })
 
@@ -171,8 +173,8 @@ describe("GET /devices search", () => {
     const res = await app.request("/devices?serial=SN")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.length).toBe(1)
-    expect(body[0].serialNumber).toBe("SN-001")
+    expect(body.data.length).toBe(1)
+    expect(body.data[0].serialNumber).toBe("SN-001")
   })
 
   it("шукає за користувацькою назвою", async () => {
@@ -191,8 +193,8 @@ describe("GET /devices search", () => {
     const res = await app.request("/devices?name=центр")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.length).toBe(1)
-    expect(body[0].customName).toBe("Центр міста")
+    expect(body.data.length).toBe(1)
+    expect(body.data[0].customName).toBe("Центр міста")
   })
 })
 
@@ -213,8 +215,8 @@ describe("GET /devices sorting", () => {
     const res = await app.request("/devices?sortBy=serialNumber&sortOrder=asc")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body[0].serialNumber).toBe("SN-001")
-    expect(body[1].serialNumber).toBe("SN-002")
+    expect(body.data[0].serialNumber).toBe("SN-001")
+    expect(body.data[1].serialNumber).toBe("SN-002")
   })
 
   it("сортує за серійним номером Z-A", async () => {
@@ -233,8 +235,8 @@ describe("GET /devices sorting", () => {
     const res = await app.request("/devices?sortBy=serialNumber&sortOrder=desc")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body[0].serialNumber).toBe("SN-002")
-    expect(body[1].serialNumber).toBe("SN-001")
+    expect(body.data[0].serialNumber).toBe("SN-002")
+    expect(body.data[1].serialNumber).toBe("SN-001")
   })
 })
 
@@ -252,7 +254,7 @@ describe("GET /devices pagination", () => {
     const res = await app.request("/devices?take=2")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body.length).toBe(2)
+    expect(body.data.length).toBe(2)
   })
 
   it("пропускає записи через skip", async () => {
@@ -268,7 +270,7 @@ describe("GET /devices pagination", () => {
     const res = await app.request("/devices?skip=1&take=10&sortBy=serialNumber&sortOrder=asc")
     expect(res.status).toBe(200)
     const body = await res.json()
-    expect(body[0].serialNumber).toBe("SN-002")
+    expect(body.data[0].serialNumber).toBe("SN-002")
   })
 })
 
@@ -314,7 +316,7 @@ describe("DELETE /devices/:id", () => {
 
     const list = await app.request("/devices")
     const body = await list.json()
-    expect(body).toEqual([])
+    expect(body.data).toEqual([])
   })
 
   it("повертає 404 якщо пристрій не існує", async () => {

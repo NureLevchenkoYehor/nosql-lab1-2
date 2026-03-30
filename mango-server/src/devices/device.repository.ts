@@ -6,11 +6,15 @@ import {
   UpdateDeviceStateDto,
   GetDevicesQueryDto
 } from "./device.schema"
-import { DEVICE_ACTIVE_THRESHOLD_DAYS, stripUndefined } from "../common/utils"
+import { DEVICE_ACTIVE_THRESHOLD_DAYS, PaginatedResponseDto, stripUndefined } from "../common/utils"
 
 const COLLECTION = "devices"
 
-export async function createDevice(db: Db, dto: CreateDeviceDto, apiKeyHash: string): Promise<Device | null> {
+export async function createDevice(
+  db: Db,
+  dto: CreateDeviceDto,
+  apiKeyHash: string
+): Promise<Device | null> {
   const existing = await db.collection<Device>(COLLECTION).findOne({
     serialNumber: dto.serialNumber,
     archivedAt: null
@@ -31,7 +35,10 @@ export async function createDevice(db: Db, dto: CreateDeviceDto, apiKeyHash: str
   return { _id: result.insertedId, ...doc }
 }
 
-export async function getDevices(db: Db, query: GetDevicesQueryDto): Promise<Device[]> {
+export async function getDevices(
+  db: Db,
+  query: GetDevicesQueryDto
+): Promise<PaginatedResponseDto<Device>> {
   const filter: Record<string, unknown> = { archivedAt: null }
 
   if (query.modelId) {
@@ -70,12 +77,26 @@ export async function getDevices(db: Db, query: GetDevicesQueryDto): Promise<Dev
   const skip = query.skip ?? 0
   const take = query.take ?? 20
 
-  return db.collection<Device>(COLLECTION)
-    .find(filter)
-    .sort(sort)
-    .skip(skip)
-    .limit(take)
-    .toArray()
+  const [result] = await db.collection<Device>(COLLECTION).aggregate([
+    { $match: filter },
+    {
+      $facet: {
+        data: [
+          { $sort: { [sortField]: sortDirection } },
+          { $skip: skip },
+          { $limit: take },
+        ],
+        total: [{ $count: "count" }],
+      }
+    }
+  ]).toArray()
+
+  const total = result.total[0]?.count ?? 0
+
+  return {
+    data: result.data as Device[],
+    total,
+  }
 }
 
 export async function getDeviceById(db: Db, id: string): Promise<Device | null> {
