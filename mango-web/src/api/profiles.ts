@@ -1,4 +1,5 @@
 import { api } from "./client"
+import type { PaginatedResponse } from "./common"
 
 // Типи — відображають що повертає бекенд
 export type Profile = {
@@ -8,11 +9,6 @@ export type Profile = {
   surname?: string
   phone?: string
   email?: string
-}
-
-export type PaginatedResponse<T> = {
-  data: T[]
-  total: number
 }
 
 export type GetProfilesQuery = {
