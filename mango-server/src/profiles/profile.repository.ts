@@ -29,6 +29,7 @@ export async function getProfiles(db: Db, query: GetProfilesQueryDto): Promise<P
     filter["$or"] = [
       { name: { $regex: query.search, $options: "i" } },
       { surname: { $regex: query.search, $options: "i" } },
+      { login: { $regex: query.search } },
     ]
   }
 
