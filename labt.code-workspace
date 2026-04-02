@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "mango-server"
+		},
+		{
+			"path": "mango-web"
+		}
+	],
+	"settings": {}
+}
