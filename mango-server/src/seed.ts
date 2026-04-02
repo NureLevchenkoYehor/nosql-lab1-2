@@ -1,33 +1,97 @@
-import { Db, ObjectId } from "mongodb";
 import { connectDb } from "./db"
+import { hashPassword, generateApiKey, hashApiKey } from "./common/crypto"
+import { Db, ObjectId } from "mongodb"
 
-const profiles = [
-  { _id: new ObjectId(), isDefault: true, name: { first: 'admin', last: 'sys' } },
-  { _id: new ObjectId(), isDefault: false, name: { first: 'ivan', last: 'petrov' } },
-  { _id: new ObjectId(), isDefault: false, name: { first: 'maria', last: 'kovalenko' } },
-  { _id: new ObjectId(), isDefault: false, name: { first: 'sergey', last: 'popov' } },
-  { _id: new ObjectId(), isDefault: false, name: { first: 'olga', last: 'ivanova' } },
-];
 
-const identites = [
-  { profile: profiles[0]._id, login: 'admin', passwordHash: 'hash1', email: 'admin@system.local' },
-  { profile: profiles[1]._id, login: 'ivan.petrov', passwordHash: 'hash2', email: 'ivan.petrov@gov.ua' },
-  { profile: profiles[2]._id, login: 'maria.kovalenko', passwordHash: 'hash3', email: 'maria.kovalenko@gov.ua' },
-  { profile: profiles[3]._id, login: 'sergey.popov', passwordHash: 'hash4', email: 'sergey.popov@azov.ua' },
-  { profile: profiles[4]._id, login: 'olga.ivanova', passwordHash: 'hash5', email: 'olga.ivanova@azov.ua' },
-];
-
-seed();
 
 async function seed() {
-  const db = await connectDb()
+  const db = await connectDb(Bun.env.MONGO_DB!)
 
   await clearDb(db);
 
-  await db.collection("profiles").insertMany(profiles);
-  await db.collection("identities").insertMany(identites);
+  const profiles = await db.collection("profiles").insertMany([
+    { login: "admin", passwordHash: await hashPassword("admin123!"), archivedAt: null },
+    { login: "ivan", passwordHash: await hashPassword("admin123!"), name: "Іван", surname: "Петренко", email: "ivan@gmail.com", archivedAt: null },
+    { login: "olena", passwordHash: await hashPassword("admin123!"), name: "Олена", surname: "Коваль", phone: "+380991234567", archivedAt: null },
+    { login: "petro", passwordHash: await hashPassword("admin123!"), name: "Петро", surname: "Сидоренко", email: "petro@gmail.com", archivedAt: null },
+    { login: "maria", passwordHash: await hashPassword("admin123!"), name: "Марія", surname: "Бондаренко", email: "maria@gmail.com", phone: "+380507654321", archivedAt: null },
+  ])
+  console.log("Profiles seeded:", profiles.insertedCount)
 
-  console.log("Seeded")
+  const models = await db.collection("device-models").insertMany([
+    { name: "SoundSensor v1", archivedAt: null },
+    { name: "SoundSensor v2", archivedAt: null },
+    { name: "NoiseMeter Pro", archivedAt: null },
+  ])
+  console.log("Models seeded:", models.insertedCount)
+
+  const modelIds = Object.values(models.insertedIds)
+
+  // Пристрої
+  const deviceData = [
+    { serialNumber: "SN-001", modelId: modelIds[0], customName: "Центр міста" },
+    { serialNumber: "SN-002", modelId: modelIds[0], customName: "Парк Шевченка" },
+    { serialNumber: "SN-003", modelId: modelIds[1], customName: "Вокзал" },
+    { serialNumber: "SN-004", modelId: modelIds[1], customName: "Площа Героїв" },
+    { serialNumber: "SN-005", modelId: modelIds[2], customName: "Набережна" },
+  ]
+
+  const apiKeys: string[] = []
+  const deviceDocs = await Promise.all(deviceData.map(async d => {
+    const apiKey = generateApiKey()
+    apiKeys.push(apiKey)
+    return {
+      ...d,
+      apiKeyHash: hashApiKey(apiKey),
+      status: "deployed",
+      batteryLevel: Math.floor(Math.random() * 100),
+      lastSeenAt: new Date(),
+      archivedAt: null,
+    }
+  }))
+  const devices = await db.collection("devices").insertMany(deviceDocs)
+  console.log("Devices seeded:", devices.insertedCount)
+
+  const deviceIds = Object.values(devices.insertedIds)
+
+  // Локації — по одній на пристрій (Черкаси)
+  const baseCoords = [
+    { longitude: 32.0598, latitude: 49.4444 },
+    { longitude: 32.0621, latitude: 49.4467 },
+    { longitude: 32.0554, latitude: 49.4389 },
+    { longitude: 32.0677, latitude: 49.4501 },
+    { longitude: 32.0512, latitude: 49.4423 },
+  ]
+
+  const locationDocs = baseCoords.map((coords, i) => ({
+    deviceId: deviceIds[i],
+    ...coords,
+    recordedAt: new Date(),
+  }))
+
+  const locations = await db.collection("locations").insertMany(locationDocs)
+  console.log("Locations seeded:", locations.insertedCount)
+
+  const locationIds = Object.values(locations.insertedIds)
+
+  // Виміри — по 2 на перші 5 пристроїв
+  const measurementDocs = Array.from({ length: 10 }, (_, i) => ({
+    deviceId: deviceIds[i % 5],
+    locationId: locationIds[i % 5],
+    maxDba: 60 + Math.floor(Math.random() * 40),
+    avgDba: 45 + Math.floor(Math.random() * 30),
+    intervalS: 60,
+    measuredAt: new Date(Date.now() - i * 3600000),
+  }))
+
+  const measurements = await db.collection("acoustic-measurements").insertMany(measurementDocs)
+  console.log("Measurements seeded:", measurements.insertedCount)
+
+  console.log("\nAPI keys for devices:")
+  deviceIds.forEach((id, i) => {
+    console.log(`${deviceDocs[i].serialNumber} (${deviceDocs[i].customName}): ${apiKeys[i]}`)
+  })
+
   process.exit(0)
 }
 
@@ -37,4 +101,10 @@ async function clearDb(db: Db) {
   for (const collection of collections) {
     await db.collection(collection.name).drop();
   }
+  console.log("DB cleared")
 }
+
+seed().catch(err => {
+  console.error(err)
+  process.exit(1)
+})
