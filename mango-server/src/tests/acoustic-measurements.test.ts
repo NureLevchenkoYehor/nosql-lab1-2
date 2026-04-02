@@ -119,7 +119,7 @@ describe("POST /devices/:id/acoustic-measurements", () => {
   })
 })
 
-describe("GET /acoustic-measurements", () => {
+describe("GET /devices/acoustic-measurements", () => {
   it("повертає виміри у заданій області", async () => {
     const model = await createModel()
     const device = await createDevice(model.id)
@@ -140,7 +140,7 @@ describe("GET /acoustic-measurements", () => {
     })
 
     const res = await app.request(
-      "/acoustic-measurements?longitude=32.05&latitude=49.44&radius=1"
+      "/devices/acoustic-measurements?longitude=32.05&latitude=49.44&radius=1"
     )
 
     expect(res.status).toBe(200)
@@ -154,7 +154,7 @@ describe("GET /acoustic-measurements", () => {
 
   it("повертає null stats якщо немає вимірів у області", async () => {
     const res = await app.request(
-      "/acoustic-measurements?longitude=0&latitude=0&radius=1"
+      "/devices/acoustic-measurements?longitude=0&latitude=0&radius=1"
     )
 
     expect(res.status).toBe(200)
@@ -166,12 +166,12 @@ describe("GET /acoustic-measurements", () => {
   })
 
   it("повертає 400 якщо параметри не передані", async () => {
-    const res = await app.request("/acoustic-measurements")
+    const res = await app.request("/devices/acoustic-measurements")
     expect(res.status).toBe(400)
   })
 })
 
-describe("GET /acoustic-measurements pagination", () => {
+describe("GET /devices/acoustic-measurements pagination", () => {
   it("повертає правильну кількість записів через take", async () => {
     const model = await createModel()
     const device = await createDevice(model.id)
@@ -194,7 +194,7 @@ describe("GET /acoustic-measurements pagination", () => {
     }
 
     const res = await app.request(
-      "/acoustic-measurements?longitude=32.05&latitude=49.44&radius=1&take=2"
+      "/devices/acoustic-measurements?longitude=32.05&latitude=49.44&radius=1&take=2"
     )
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -226,7 +226,7 @@ describe("GET /acoustic-measurements pagination", () => {
     }
 
     const res = await app.request(
-      "/acoustic-measurements?longitude=32.05&latitude=49.44&radius=1&skip=1&take=10&sortBy=maxDba&sortOrder=asc"
+      "/devices/acoustic-measurements?longitude=32.05&latitude=49.44&radius=1&skip=1&take=10&sortBy=maxDba&sortOrder=asc"
     )
     expect(res.status).toBe(200)
     const body = await res.json()
@@ -237,7 +237,7 @@ describe("GET /acoustic-measurements pagination", () => {
   })
 })
 
-describe("GET /acoustic-measurements sorting", () => {
+describe("GET /devices/acoustic-measurements sorting", () => {
   it("сортує за maxDba від меншого до більшого", async () => {
     const model = await createModel()
     const device = await createDevice(model.id)
@@ -260,7 +260,7 @@ describe("GET /acoustic-measurements sorting", () => {
     }
 
     const res = await app.request(
-      "/acoustic-measurements?longitude=32.05&latitude=49.44&radius=1&sortBy=maxDba&sortOrder=asc"
+      "/devices/acoustic-measurements?longitude=32.05&latitude=49.44&radius=1&sortBy=maxDba&sortOrder=asc"
     )
     expect(res.status).toBe(200)
     const body = await res.json()
