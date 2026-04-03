@@ -1,13 +1,9 @@
 import { api } from "./client"
+import type { PaginatedResponse } from "./common"
 
 export type DeviceModel = {
   id: string
   name: string
-}
-
-export type PaginatedResponse<T> = {
-  data: T[]
-  total: number
 }
 
 export type GetDeviceModelsQuery = {
