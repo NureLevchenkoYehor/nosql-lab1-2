@@ -1,13 +1,12 @@
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-  createDevice,
-  updateDevice,
-  rotateDeviceKey,
-  type DeviceResponseDto,
-  type CreateDeviceBody,
-  type UpdateDeviceBody,
-  type DeviceStatus
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, Box, Stack, MenuItem, Typography
+} from "@mui/material"
+import {
+  createDevice, updateDevice, rotateDeviceKey,
+  type DeviceResponseDto, type CreateDeviceBody, type UpdateDeviceBody, type DeviceStatus
 } from "../api/devices"
 import { getDeviceModels } from "../api/deviceModels"
 
@@ -37,7 +36,6 @@ export function DeviceModal({ mode, device, onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [apiKeyToShow, setApiKeyToShow] = useState<string | null>(null)
 
-  // Завантажуємо моделі для випадаючого списку (беремо 100 для спрощення)
   const { data: modelsData, isLoading: modelsLoading } = useQuery({
     queryKey: ["deviceModels", { take: 100 }],
     queryFn: () => getDeviceModels({ take: 100 }),
@@ -48,7 +46,7 @@ export function DeviceModal({ mode, device, onClose }: Props) {
     mutationFn: (body: CreateDeviceBody) => createDevice(body),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["devices"] })
-      setApiKeyToShow(data.apiKey) // Показуємо ключ замість закриття
+      setApiKeyToShow(data.apiKey)
     },
     onError: () => setError("Не вдалось створити пристрій. Перевірте унікальність серійного номера."),
   })
@@ -68,7 +66,7 @@ export function DeviceModal({ mode, device, onClose }: Props) {
     onError: () => setError("Не вдалось згенерувати новий ключ."),
   })
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
@@ -94,74 +92,82 @@ export function DeviceModal({ mode, device, onClose }: Props) {
 
   const isPending = createMutation.isPending || updateMutation.isPending || rotateKeyMutation.isPending
 
-  // Якщо ми отримали ключ, показуємо лише його (екран успіху)
-  if (apiKeyToShow) {
-    return (
-      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ background: "white", padding: 24, minWidth: 400 }}>
-          <h2>Успіх!</h2>
-          <p>Збережіть цей API ключ для прошивки пристрою. Ви більше його не побачите.</p>
-          <code style={{ display: "block", background: "#f4f4f4", padding: 12, margin: "16px 0", wordBreak: "break-all" }}>
-            {apiKeyToShow}
-          </code>
-          <button onClick={onClose}>Закрити</button>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "white", padding: 24, minWidth: 400 }}>
-        <h2>{mode === "create" ? "Додати пристрій" : "Редагувати пристрій"}</h2>
-
-        {mode === "create" && (
-          <>
-            <div style={{ marginBottom: 12 }}>
-              <label>Модель *</label>
-              {modelsLoading ? <span>Завантаження моделей...</span> : (
-                <select name="modelId" value={form.modelId} onChange={handleChange} style={{ width: "100%" }}>
-                  <option value="" disabled>Оберіть модель</option>
-                  {modelsData?.data.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
+    <Dialog open={true} onClose={apiKeyToShow ? undefined : onClose} fullWidth maxWidth="sm">
+      {apiKeyToShow ? (
+        <>
+          <DialogTitle sx={{ color: 'success.main' }}>Успіх!</DialogTitle>
+          <DialogContent>
+            <Typography>Збережіть цей API ключ для прошивки пристрою. Ви більше його не побачите.</Typography>
+            <Box sx={{ 
+              bgcolor: 'grey.100', p: 2, mt: 2, borderRadius: 1, 
+              fontFamily: 'monospace', wordBreak: 'break-all', border: '1px solid #ccc' 
+            }}>
+              {apiKeyToShow}
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={onClose} variant="contained">Закрити</Button>
+          </DialogActions>
+        </>
+      ) : (
+        <>
+          <DialogTitle>{mode === "create" ? "Додати пристрій" : "Редагувати пристрій"}</DialogTitle>
+          <DialogContent>
+            <Stack spacing={2} sx={{ mt: 1 }}>
+              {mode === "create" && (
+                <>
+                  <TextField
+                    select
+                    label="Модель *"
+                    name="modelId"
+                    value={form.modelId}
+                    onChange={handleChange}
+                    fullWidth
+                    disabled={modelsLoading}
+                  >
+                    <MenuItem value="" disabled>Оберіть модель</MenuItem>
+                    {modelsData?.data.map(m => <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>)}
+                  </TextField>
+                  <TextField 
+                    label="Серійний номер *" name="serialNumber" value={form.serialNumber} 
+                    onChange={handleChange} inputProps={{ maxLength: 100 }} fullWidth 
+                  />
+                </>
               )}
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <label>Серійний номер *</label>
-              <input name="serialNumber" value={form.serialNumber} onChange={handleChange} maxLength={100} style={{ width: "100%" }} />
-            </div>
-          </>
-        )}
 
-        <div style={{ marginBottom: 12 }}>
-          <label>Користувацька назва</label>
-          <input name="customName" value={form.customName} onChange={handleChange} maxLength={100} style={{ width: "100%" }} />
-        </div>
+              <TextField 
+                label="Користувацька назва" name="customName" value={form.customName} 
+                onChange={handleChange} inputProps={{ maxLength: 100 }} fullWidth 
+              />
 
-        {mode === "edit" && (
-          <div style={{ marginBottom: 12 }}>
-            <label>Статус</label>
-            <select name="status" value={form.status} onChange={handleChange} style={{ width: "100%" }}>
-              {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-            </select>
-          </div>
-        )}
+              {mode === "edit" && (
+                <TextField select label="Статус" name="status" value={form.status} onChange={handleChange} fullWidth>
+                  {STATUSES.map(s => <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>)}
+                </TextField>
+              )}
 
-        {error && <div style={{ color: "red", marginBottom: 12 }}>{error}</div>}
+              {error && <Box sx={{ color: 'error.main', fontSize: '0.875rem' }}>{error}</Box>}
+            </Stack>
+          </DialogContent>
 
-        <div style={{ display: "flex", gap: "10px", marginTop: 16 }}>
-          <button onClick={onClose} disabled={isPending}>Скасувати</button>
-          <button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? "Збереження..." : "Зберегти"}
-          </button>
-
-          {mode === "edit" && (
-            <button onClick={() => rotateKeyMutation.mutate()} disabled={isPending} style={{ background: "orange" }}>
-              Перегенерувати ключ
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+          <DialogActions sx={{ justifyContent: "space-between", px: 3, pb: 2 }}>
+            <Box>
+              {mode === "edit" && (
+                <Button onClick={() => rotateKeyMutation.mutate()} disabled={isPending} color="warning">
+                  Перегенерувати ключ
+                </Button>
+              )}
+            </Box>
+            <Box>
+              <Button onClick={onClose} disabled={isPending} sx={{ mr: 1 }}>Скасувати</Button>
+              <Button onClick={handleSubmit} variant="contained" disabled={isPending}>
+                {isPending ? "Збереження..." : "Зберегти"}
+              </Button>
+            </Box>
+          </DialogActions>
+        </>
+      )}
+    </Dialog>
   )
 }

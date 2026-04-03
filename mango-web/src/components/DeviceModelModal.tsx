@@ -1,11 +1,12 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
-  createDeviceModel,
-  updateDeviceModel,
-  type DeviceModel,
-  type CreateDeviceModelBody,
-  type UpdateDeviceModelBody
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, Box
+} from "@mui/material"
+import {
+  createDeviceModel, updateDeviceModel,
+  type DeviceModel, type CreateDeviceModelBody, type UpdateDeviceModelBody
 } from "../api/deviceModels"
 
 type Props = {
@@ -16,7 +17,6 @@ type Props = {
 
 export function DeviceModelModal({ mode, deviceModel, onClose }: Props) {
   const queryClient = useQueryClient()
-
   const [name, setName] = useState(deviceModel?.name ?? "")
   const [error, setError] = useState<string | null>(null)
 
@@ -61,36 +61,35 @@ export function DeviceModelModal({ mode, deviceModel, onClose }: Props) {
   const isPending = createMutation.isPending || updateMutation.isPending
 
   return (
-    <div style={{
-      position: "fixed", inset: 0,
-      background: "rgba(0,0,0,0.5)",
-      display: "flex", alignItems: "center", justifyContent: "center"
-    }}>
-      <div style={{ background: "white", padding: 24, minWidth: 400 }}>
-        <h2>{mode === "create" ? "Додати модель" : "Редагувати модель"}</h2>
+    <Dialog open={true} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>{mode === "create" ? "Додати модель" : "Редагувати модель"}</DialogTitle>
 
-        <div>
-          <label>Назва моделі *</label>
-          <input
+      <DialogContent>
+        {/* Box замінює <div> і дозволяє легко додавати відступи через sx (mt = margin-top) */}
+        <Box sx={{ mt: 1 }}>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Назва моделі"
+            type="text"
+            fullWidth
+            variant="outlined"
             value={name}
             onChange={e => setName(e.target.value)}
-            placeholder="Введіть назву..."
-            maxLength={100}
+            helperText={`${name.length}/100`}
+            error={!!error}
+            inputProps={{ maxLength: 100 }}
           />
-          <small style={{ display: "block", color: "gray" }}>
-            {name.length}/100
-          </small>
-        </div>
+          {error && <Box sx={{ color: 'error.main', mt: 1, fontSize: '0.875rem' }}>{error}</Box>}
+        </Box>
+      </DialogContent>
 
-        {error && <div style={{ color: "red", marginTop: 8 }}>{error}</div>}
-
-        <div style={{ marginTop: 16 }}>
-          <button onClick={onClose} disabled={isPending}>Скасувати</button>
-          <button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? "Збереження..." : "Зберегти"}
-          </button>
-        </div>
-      </div>
-    </div>
+      <DialogActions>
+        <Button onClick={onClose} disabled={isPending}>Скасувати</Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={isPending}>
+          {isPending ? "Збереження..." : "Зберегти"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   )
 }

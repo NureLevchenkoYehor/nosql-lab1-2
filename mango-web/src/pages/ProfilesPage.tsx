@@ -2,6 +2,11 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useDebounce } from "use-debounce"
 import {
+  Box, Button, TextField, Typography, Paper,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  CircularProgress, Stack
+} from "@mui/material"
+import {
   getProfiles,
   deleteProfile,
   type Profile,
@@ -52,13 +57,8 @@ export function ProfilesPage() {
     }))
   }
 
-  function handleNextPage() {
-    setQuery(prev => ({ ...prev, skip: (prev.skip ?? 0) + (prev.take ?? 10) }))
-  }
-
-  function handlePrevPage() {
-    setQuery(prev => ({ ...prev, skip: Math.max(0, (prev.skip ?? 0) - (prev.take ?? 10)) }))
-  }
+  function handleNextPage() { setQuery(prev => ({ ...prev, skip: (prev.skip ?? 0) + (prev.take ?? 10) })) }
+  function handlePrevPage() { setQuery(prev => ({ ...prev, skip: Math.max(0, (prev.skip ?? 0) - (prev.take ?? 10)) })) }
 
   function handleDelete(id: string) {
     if (confirm("Архівувати профіль?")) {
@@ -67,72 +67,88 @@ export function ProfilesPage() {
   }
 
   const currentPage = Math.floor((query.skip ?? 0) / (query.take ?? 10)) + 1
-  const totalPages = Math.ceil((data?.total ?? 0) / (query.take ?? 10))
+  const totalPages = Math.ceil((data?.total ?? 0) / (query.take ?? 10)) || 1
 
-  if (isLoading) return <div>Завантаження...</div>
-  if (isError) return <div>Не вдалось завантажити профілі</div>
+  if (isLoading) return <Box sx={{ p: 4 }}><CircularProgress /></Box>
+  if (isError) return <Box sx={{ p: 4, color: 'error.main' }}>Не вдалось завантажити профілі</Box>
 
   return (
-    <div>
-      <h1>Профілі</h1>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>Профілі</Typography>
 
-      <div>
-        <input
-          type="text"
+      <Stack direction="row" spacing={2} sx={{ mb: 3, alignItems: "center" }}>
+        <TextField
+          size="small"
+          variant="outlined"
           value={searchInput}
           placeholder="Пошук за ім'ям або логіном..."
           onChange={handleSearch}
+          sx={{ width: 300 }}
         />
-        <button onClick={() => setModal({ mode: "create" })}>
+        <Button variant="contained" onClick={() => setModal({ mode: "create" })}>
           Створити профіль
-        </button>
-      </div>
+        </Button>
+        {isFetching && <CircularProgress size={24} />}
+      </Stack>
 
-      {isFetching && <span>Оновлення...</span>}
-
-      {data?.data.length === 0
-        ? <div>Нічого не знайдено</div>
-        : (
-          <table>
-            <thead>
-              <tr>
-                <th onClick={() => handleSort("login")}>Логін</th>
-                <th onClick={() => handleSort("name")}>Ім'я</th>
-                <th onClick={() => handleSort("surname")}>Прізвище</th>
-                <th onClick={() => handleSort("email")}>Пошта</th>
-                <th onClick={() => handleSort("phone")}>Телефон</th>
-                <th>Дії</th>
-              </tr>
-            </thead>
-            <tbody>
+      {data?.data.length === 0 ? (
+        <Typography>Нічого не знайдено</Typography>
+      ) : (
+        <TableContainer component={Paper} variant="outlined">
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                <TableCell onClick={() => handleSort("login")} sx={{ cursor: "pointer", fontWeight: "bold" }}>
+                  Логін {query.sortBy === "login" && (query.sortOrder === "asc" ? "↑" : "↓")}
+                </TableCell>
+                <TableCell onClick={() => handleSort("name")} sx={{ cursor: "pointer", fontWeight: "bold" }}>
+                  Ім'я {query.sortBy === "name" && (query.sortOrder === "asc" ? "↑" : "↓")}
+                </TableCell>
+                <TableCell onClick={() => handleSort("surname")} sx={{ cursor: "pointer", fontWeight: "bold" }}>
+                  Прізвище {query.sortBy === "surname" && (query.sortOrder === "asc" ? "↑" : "↓")}
+                </TableCell>
+                <TableCell onClick={() => handleSort("email")} sx={{ cursor: "pointer", fontWeight: "bold" }}>
+                  Пошта {query.sortBy === "email" && (query.sortOrder === "asc" ? "↑" : "↓")}
+                </TableCell>
+                <TableCell onClick={() => handleSort("phone")} sx={{ cursor: "pointer", fontWeight: "bold" }}>
+                  Телефон {query.sortBy === "phone" && (query.sortOrder === "asc" ? "↑" : "↓")}
+                </TableCell>
+                <TableCell sx={{ fontWeight: "bold", width: 200 }}>Дії</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {data?.data.map(profile => (
-                <tr key={profile.id}>
-                  <td>{profile.login}</td>
-                  <td>{profile.name ?? "—"}</td>
-                  <td>{profile.surname ?? "—"}</td>
-                  <td>{profile.email ?? "—"}</td>
-                  <td>{profile.phone ?? "—"}</td>
-                  <td>
-                    <button onClick={() => setModal({ mode: "edit", profile })}>
-                      Редагувати
-                    </button>
-                    <button onClick={() => handleDelete(profile.id)}>
-                      Видалити
-                    </button>
-                  </td>
-                </tr>
+                <TableRow key={profile.id} hover>
+                  <TableCell>{profile.login}</TableCell>
+                  <TableCell>{profile.name ?? "—"}</TableCell>
+                  <TableCell>{profile.surname ?? "—"}</TableCell>
+                  <TableCell>{profile.email ?? "—"}</TableCell>
+                  <TableCell>{profile.phone ?? "—"}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1}>
+                      <Button size="small" variant="outlined" onClick={() => setModal({ mode: "edit", profile })}>
+                        Ред.
+                      </Button>
+                      <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(profile.id)}>
+                        Вид.
+                      </Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        )
-      }
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       {(data?.total ?? 0) > 0 && (
-        <div>
-          <span>{data?.total} профілів — сторінка {currentPage} з {totalPages}</span>
-          <button onClick={handlePrevPage} disabled={currentPage === 1}>← Назад</button>
-          <button onClick={handleNextPage} disabled={currentPage >= totalPages}>Вперед →</button>
-        </div>
+        <Stack direction="row" spacing={2} sx={{ mt: 3, alignItems: "center" }}>
+          <Button variant="text" onClick={handlePrevPage} disabled={currentPage === 1}>← Назад</Button>
+          <Typography variant="body2">
+            Всього: {data?.total} — сторінка {currentPage} з {totalPages}
+          </Typography>
+          <Button variant="text" onClick={handleNextPage} disabled={currentPage >= totalPages}>Вперед →</Button>
+        </Stack>
       )}
 
       {modal.mode !== "closed" && (
@@ -142,6 +158,6 @@ export function ProfilesPage() {
           onClose={() => setModal({ mode: "closed" })}
         />
       )}
-    </div>
+    </Box>
   )
 }

@@ -2,10 +2,13 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useDebounce } from "use-debounce"
 import {
-  getDeviceModels,
-  deleteDeviceModel,
-  type DeviceModel,
-  type GetDeviceModelsQuery
+  Box, Button, TextField, Typography, Paper,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  CircularProgress, Stack
+} from "@mui/material"
+import {
+  getDeviceModels, deleteDeviceModel,
+  type DeviceModel, type GetDeviceModelsQuery
 } from "../api/deviceModels"
 import { DeviceModelModal } from "../components/DeviceModelModal"
 
@@ -21,10 +24,7 @@ export function DeviceModelsPage() {
   const [modal, setModal] = useState<ModalState>({ mode: "closed" })
 
   const [query, setQuery] = useState<GetDeviceModelsQuery>({
-    take: 10,
-    skip: 0,
-    sortBy: "name",
-    sortOrder: "asc",
+    take: 10, skip: 0, sortBy: "name", sortOrder: "asc",
   })
 
   const { data, isLoading, isError, isFetching } = useQuery({
@@ -52,14 +52,9 @@ export function DeviceModelsPage() {
     }))
   }
 
-  function handleNextPage() {
-    setQuery(prev => ({ ...prev, skip: (prev.skip ?? 0) + (prev.take ?? 10) }))
-  }
-
-  function handlePrevPage() {
-    setQuery(prev => ({ ...prev, skip: Math.max(0, (prev.skip ?? 0) - (prev.take ?? 10)) }))
-  }
-
+  function handleNextPage() { setQuery(prev => ({ ...prev, skip: (prev.skip ?? 0) + (prev.take ?? 10) })) }
+  function handlePrevPage() { setQuery(prev => ({ ...prev, skip: Math.max(0, (prev.skip ?? 0) - (prev.take ?? 10)) })) }
+  
   function handleDelete(id: string) {
     if (confirm("Видалити (або архівувати) цю модель?")) {
       deleteMutation.mutate(id)
@@ -69,66 +64,78 @@ export function DeviceModelsPage() {
   const currentPage = Math.floor((query.skip ?? 0) / (query.take ?? 10)) + 1
   const totalPages = Math.ceil((data?.total ?? 0) / (query.take ?? 10)) || 1
 
-  if (isLoading) return <div>Завантаження...</div>
-  if (isError) return <div>Не вдалось завантажити моделі пристроїв</div>
+  if (isLoading) return <Box sx={{ p: 4 }}><CircularProgress /></Box>
+  if (isError) return <Box sx={{ p: 4, color: 'error.main' }}>Не вдалось завантажити моделі пристроїв</Box>
 
   return (
-    <div>
-      <h1>Моделі пристроїв</h1>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" gutterBottom>Моделі пристроїв</Typography>
 
-      <div style={{ marginBottom: 16 }}>
-        <input
-          type="text"
+      {/* Панель інструментів */}
+      <Stack direction="row" spacing={2} sx={{ mb: 3, alignItems: "center" }}>
+        <TextField
+          size="small"
+          variant="outlined"
           value={searchInput}
           placeholder="Пошук за назвою..."
           onChange={handleSearch}
+          sx={{ width: 300 }}
         />
-        <button onClick={() => setModal({ mode: "create" })}>
+        <Button variant="contained" onClick={() => setModal({ mode: "create" })}>
           Додати модель
-        </button>
-      </div>
+        </Button>
+        {isFetching && <CircularProgress size={24} />}
+      </Stack>
 
-      {isFetching && <span>Оновлення...</span>}
-
-      {data?.data.length === 0
-        ? <div>Нічого не знайдено</div>
-        : (
-          <table style={{ width: "100%", textAlign: "left", marginTop: 16 }}>
-            <thead>
-              <tr>
-                <th style={{ cursor: "pointer" }} onClick={handleSort}>
+      {data?.data.length === 0 ? (
+        <Typography>Нічого не знайдено</Typography>
+      ) : (
+        <TableContainer component={Paper} variant="outlined">
+          <Table>
+            <TableHead>
+              <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                <TableCell 
+                  onClick={handleSort} 
+                  sx={{ cursor: "pointer", fontWeight: "bold" }}
+                >
                   Назва моделі {query.sortOrder === "asc" ? "↑" : "↓"}
-                </th>
-                <th>Дії</th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableCell>
+                <TableCell sx={{ fontWeight: "bold", width: 200 }}>Дії</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
               {data?.data.map(model => (
-                <tr key={model.id}>
-                  <td>{model.name}</td>
-                  <td>
-                    <button onClick={() => setModal({ mode: "edit", model })}>
-                      Редагувати
-                    </button>
-                    <button onClick={() => handleDelete(model.id)}>
-                      Видалити
-                    </button>
-                  </td>
-                </tr>
+                <TableRow key={model.id} hover>
+                  <TableCell>{model.name}</TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1}>
+                      <Button size="small" variant="outlined" onClick={() => setModal({ mode: "edit", model })}>
+                        Ред.
+                      </Button>
+                      <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(model.id)}>
+                        Вид.
+                      </Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        )
-      }
-
-      {(data?.total ?? 0) > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <span>Всього: {data?.total} — сторінка {currentPage} з {totalPages}</span>
-          <button onClick={handlePrevPage} disabled={currentPage === 1}>← Назад</button>
-          <button onClick={handleNextPage} disabled={currentPage >= totalPages}>Вперед →</button>
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
+      {/* Пагінація */}
+      {(data?.total ?? 0) > 0 && (
+        <Stack direction="row" spacing={2} sx={{ mt: 3, alignItems: "center" }}>
+          <Button variant="text" onClick={handlePrevPage} disabled={currentPage === 1}>← Назад</Button>
+          <Typography variant="body2">
+            Всього: {data?.total} — сторінка {currentPage} з {totalPages}
+          </Typography>
+          <Button variant="text" onClick={handleNextPage} disabled={currentPage >= totalPages}>Вперед →</Button>
+        </Stack>
+      )}
+
+      {/* Модальне вікно */}
       {modal.mode !== "closed" && (
         <DeviceModelModal
           mode={modal.mode}
@@ -136,6 +143,6 @@ export function DeviceModelsPage() {
           onClose={() => setModal({ mode: "closed" })}
         />
       )}
-    </div>
+    </Box>
   )
 }

@@ -1,6 +1,10 @@
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, Box, Stack
+} from "@mui/material"
+import {
   createProfile,
   updateProfile,
   type Profile,
@@ -79,53 +83,33 @@ export function ProfileModal({ mode, profile, onClose }: Props) {
   const isPending = createMutation.isPending || updateMutation.isPending
 
   return (
-    <div style={{
-      position: "fixed", inset: 0,
-      background: "rgba(0,0,0,0.5)",
-      display: "flex", alignItems: "center", justifyContent: "center"
-    }}>
-      <div style={{ background: "white", padding: 24, minWidth: 400 }}>
-        <h2>{mode === "create" ? "Створити профіль" : "Редагувати профіль"}</h2>
+    <Dialog open={true} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle>{mode === "create" ? "Створити профіль" : "Редагувати профіль"}</DialogTitle>
 
-        {mode === "create" && (
-          <>
-            <div>
-              <label>Логін *</label>
-              <input name="login" value={form.login} onChange={handleChange} />
-            </div>
-            <div>
-              <label>Пароль *</label>
-              <input name="password" type="password" value={form.password} onChange={handleChange} />
-            </div>
-          </>
-        )}
+      <DialogContent>
+        {/* Stack автоматично розставить вертикальні відступи між елементами */}
+        <Stack spacing={2} sx={{ mt: 1 }}>
+          {mode === "create" && (
+            <>
+              <TextField label="Логін *" name="login" value={form.login} onChange={handleChange} fullWidth />
+              <TextField label="Пароль *" name="password" type="password" value={form.password} onChange={handleChange} fullWidth />
+            </>
+          )}
+          <TextField label="Ім'я" name="name" value={form.name} onChange={handleChange} fullWidth />
+          <TextField label="Прізвище" name="surname" value={form.surname} onChange={handleChange} fullWidth />
+          <TextField label="Пошта" name="email" value={form.email} onChange={handleChange} fullWidth />
+          <TextField label="Телефон" name="phone" value={form.phone} onChange={handleChange} fullWidth />
 
-        <div>
-          <label>Ім'я</label>
-          <input name="name" value={form.name} onChange={handleChange} />
-        </div>
-        <div>
-          <label>Прізвище</label>
-          <input name="surname" value={form.surname} onChange={handleChange} />
-        </div>
-        <div>
-          <label>Пошта</label>
-          <input name="email" value={form.email} onChange={handleChange} />
-        </div>
-        <div>
-          <label>Телефон</label>
-          <input name="phone" value={form.phone} onChange={handleChange} />
-        </div>
+          {error && <Box sx={{ color: 'error.main', fontSize: '0.875rem' }}>{error}</Box>}
+        </Stack>
+      </DialogContent>
 
-        {error && <div>{error}</div>}
-
-        <div>
-          <button onClick={onClose} disabled={isPending}>Скасувати</button>
-          <button onClick={handleSubmit} disabled={isPending}>
-            {isPending ? "Збереження..." : "Зберегти"}
-          </button>
-        </div>
-      </div>
-    </div>
+      <DialogActions>
+        <Button onClick={onClose} disabled={isPending}>Скасувати</Button>
+        <Button onClick={handleSubmit} variant="contained" disabled={isPending}>
+          {isPending ? "Збереження..." : "Зберегти"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   )
 }
