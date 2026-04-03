@@ -6,6 +6,8 @@ import { ProfilesPage } from './pages/ProfilesPage'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Layout } from './components/Layout'
 import { DeviceModelsPage } from './pages/DeviceModelsPage'
+import { DevicesPage } from './pages/DevicesPage'
+import { HeatmapPage } from './pages/HeatmapPage'
 
 const queryClient = new QueryClient()
 
@@ -15,9 +17,9 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <Routes>
           <Route path='/' element={<Layout />}>
-            <Route path="/" element={<div>Теплова мапа — незабаром</div>} />
+            <Route path="/" element={<HeatmapPage />} />
             <Route path="/admin/profiles" element={<ProfilesPage />} />
-            <Route path="/admin/devices" element={<div>Пристрої — незабаром</div>} />
+            <Route path="/admin/devices" element={<DevicesPage />} />
             <Route path="/admin/models" element={<DeviceModelsPage />} />
           </Route>
         </Routes>
