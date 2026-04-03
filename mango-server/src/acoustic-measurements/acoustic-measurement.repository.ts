@@ -40,14 +40,9 @@ export async function getAcousticMeasurements(
     }
   }
 
-  // Переводимо метри в градуси для довготи (longitude), враховуючи кривизну Землі
-  const radiusInDegreesLng = query.radius / (111320 * Math.cos(query.latitude * (Math.PI / 180)));
-  // Переводимо метри в градуси для широти (latitude)
-  const radiusInDegreesLat = query.radius / 111320;
-
   const matchStage: Record<string, unknown> = {
-    "location.longitude": radiusFilter(radiusInDegreesLng, query.radius),
-    "location.latitude": radiusFilter(radiusInDegreesLat, query.radius),
+    "location.longitude": radiusFilter(query.longitude, query.radius),
+    "location.latitude": radiusFilter(query.latitude, query.radius),
   }
 
   const timeFilter: Record<string, unknown> = {}
