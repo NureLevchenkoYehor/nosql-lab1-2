@@ -66,8 +66,16 @@ export async function updateDeviceModel(db: Db, id: string, dto: UpdateDeviceMod
 }
 
 export async function archiveDeviceModel(db: Db, id: string): Promise<void> {
+  const modelId = new ObjectId(id)
+  const now = new Date()
+
   await db.collection<DeviceModel>(COLLECTION).updateOne(
-    { _id: new ObjectId(id) },
-    { $set: { archivedAt: new Date() } }
+    { _id: modelId },
+    { $set: { archivedAt: now } }
+  )
+
+  await db.collection("devices").updateMany(
+    { modelId: modelId, archivedAt: null },
+    { $set: { archivedAt: now, } }
   )
 }
