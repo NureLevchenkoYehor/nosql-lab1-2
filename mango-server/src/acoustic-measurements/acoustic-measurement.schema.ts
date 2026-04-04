@@ -29,6 +29,8 @@ export const GetAcousticMeasurementsQuerySchema = z.object({
   longitude: z.coerce.number().min(-180).max(180),
   latitude: z.coerce.number().min(-90).max(90),
   radius: z.coerce.number().positive(),
+  width: z.coerce.number().positive().optional(),
+  height: z.coerce.number().positive().optional(),
   from: z.iso.datetime().optional(),
   to: z.iso.datetime().optional(),
   sortBy: z.enum(["measuredAt", "maxDba", "avgDba"]).optional(),
@@ -59,7 +61,8 @@ export type AcousticMeasurementResponseDto = {
 export type AcousticMeasurementsPaginatedDto = PaginatedResponseDto<PositionedAcousticMeasurement> & {
   stats: {
     maxDba: number | null
-    avgDba: number | null
+    avgDba: number | null,
+    uniqueDevices: number
   }
 }
 
