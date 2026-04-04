@@ -5,6 +5,8 @@ export type GetAcousticMeasurementsQuery = {
   longitude: number
   latitude: number
   radius: number
+  width?: number
+  height?: number
   from?: string
   to?: string
   sortBy?: "measuredAt" | "maxDba" | "avgDba"
@@ -31,6 +33,7 @@ export type AcousticMeasurementsPaginatedDto = PaginatedResponse<AcousticMeasure
   stats: {
     maxDba: number | null
     avgDba: number | null
+    uniqueDevices: number
   }
 }
 
@@ -41,6 +44,8 @@ export function getMeasurements(query: GetAcousticMeasurementsQuery): Promise<Ac
   params.set("latitude", String(query.latitude))
   params.set("radius", String(query.radius)) // Припускаю, що радіус на бекенді в метрах
 
+  if (query.width !== undefined) params.set("width", String(query.width))
+  if (query.height !== undefined) params.set("height", String(query.height))
   if (query.from) params.set("from", query.from)
   if (query.to) params.set("to", query.to)
   if (query.sortBy) params.set("sortBy", query.sortBy)

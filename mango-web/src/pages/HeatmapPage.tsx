@@ -6,46 +6,53 @@ import { Box, Typography, Paper, CircularProgress, Stack, Alert, TextField, Slid
 import "leaflet/dist/leaflet.css"
 import { HeatmapLayer } from "../components/HeatmapLayer"
 import { getMeasurements } from "../api/measurements"
+import type { Map } from "leaflet"
+
+function getViewportFromMap(map: Map) {
+  const center = map.getCenter().wrap()
+  const bounds = map.getBounds()
+  const latDiff = Math.abs(bounds.getNorth() - center.lat)
+  const lngDiff = Math.abs(bounds.getEast() - center.lng)
+  const radius = Math.max(latDiff, lngDiff)
+  const width = lngDiff * 2
+  const height = latDiff * 2
+
+  return { lat: center.lat, lng: center.lng, radius, width, height }
+}
 
 function MapController({
   onBoundsChange
 }: {
-  onBoundsChange: (lat: number, lng: number, radius: number) => void
+  onBoundsChange: (lat: number, lng: number, radius: number, width: number, height: number) => void
 }) {
+
+
   const map = useMapEvents({
     moveend: () => {
-      const center = map.getCenter().wrap()
-      const bounds = map.getBounds()
-      const latDiff = Math.abs(bounds.getNorth() - center.lat)
-      const lngDiff = Math.abs(bounds.getEast() - center.lng)
-      const radiusInDegrees = Math.min(latDiff, lngDiff) // Ваша зміна на min
-      onBoundsChange(center.lat, center.lng, radiusInDegrees)
+      const { lat, lng, radius, width, height } = getViewportFromMap(map)
+      onBoundsChange(lat, lng, radius, width, height)
     }
   })
 
   useEffect(() => {
-    const center = map.getCenter().wrap()
-    const bounds = map.getBounds()
-    const latDiff = Math.abs(bounds.getNorth() - center.lat)
-    const lngDiff = Math.abs(bounds.getEast() - center.lng)
-    const radiusInDegrees = Math.min(latDiff, lngDiff)
-    onBoundsChange(center.lat, center.lng, radiusInDegrees)
+    const { lat, lng, radius, width, height } = getViewportFromMap(map)
+    onBoundsChange(lat, lng, radius, width, height)
   }, [map, onBoundsChange])
 
   return null
 }
 
 export function HeatmapPage() {
-  const [viewport, setViewport] = useState<{ lat: number; lng: number; radius: number } | null>(null)
+  const [viewport, setViewport] = useState<{
+    lat: number; lng: number; radius: number; width: number; height: number
+  } | null>(null)
 
-  // --- СТАН ДЛЯ ЧАСОВОГО ФІЛЬТРА ---
-  // Отримуємо сьогоднішню локальну дату у форматі YYYY-MM-DD
   const [dateStr, setDateStr] = useState(() => {
     const d = new Date()
     d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
     return d.toISOString().split('T')[0]
   })
-  
+
   // Проміжок годин від 0 до 24
   const [hourRange, setHourRange] = useState<number[]>([0, 24])
   // Дебаунс, щоб не робити 100 запитів під час перетягування повзунка
@@ -54,10 +61,10 @@ export function HeatmapPage() {
   // Конвертуємо зручний UI-стан у точні ISO-рядки для бекенду (з урахуванням часового поясу)
   const { fromISO, toISO } = useMemo(() => {
     const [year, month, day] = dateStr.split('-').map(Number)
-    
+
     // Початок проміжку
     const fromDate = new Date(year, month - 1, day, debouncedHourRange[0], 0, 0)
-    
+
     // Кінець проміжку (якщо 24, то ставимо кінець доби 23:59:59)
     const toHour = debouncedHourRange[1] === 24 ? 23 : debouncedHourRange[1]
     const toMinSec = debouncedHourRange[1] === 24 ? 59 : 0
@@ -69,20 +76,27 @@ export function HeatmapPage() {
     }
   }, [dateStr, debouncedHourRange])
 
-  const handleBoundsChange = useCallback((lat: number, lng: number, radius: number) => {
-    setViewport(prev => {
-      if (prev && prev.lat === lat && prev.lng === lng && prev.radius === radius) return prev
-      return { lat, lng, radius }
-    })
-  }, [])
+  const handleBoundsChange = useCallback(
+    (lat: number, lng: number, radius: number, width: number, height: number) => {
+      setViewport(prev => {
+        if (prev
+          && prev.lat === lat
+          && prev.lng === lng
+          && prev.radius === radius
+          && prev.width === width
+          && prev.height === height) return prev
+        return { lat, lng, radius, width, height }
+      })
+    }, [])
 
   const { data, isFetching, isError } = useQuery({
-    // Додали fromISO та toISO у ключ кешу, щоб запит оновлювався при зміні часу
-    queryKey: ["measurements", viewport?.lat, viewport?.lng, viewport?.radius, fromISO, toISO],
+    queryKey: ["measurements", viewport?.lat, viewport?.lng, viewport?.radius, viewport?.width, viewport?.height, fromISO, toISO],
     queryFn: () => getMeasurements({
       latitude: viewport!.lat,
       longitude: viewport!.lng,
       radius: viewport!.radius,
+      width: viewport!.width,
+      height: viewport!.height,
       from: fromISO,
       to: toISO,
       take: 2000,
@@ -102,7 +116,7 @@ export function HeatmapPage() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", height: "calc(100vh - 100px)" }}>
-      
+
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="h4" component="h1">Теплова мапа вимірів</Typography>
         {isFetching && (
@@ -146,7 +160,7 @@ export function HeatmapPage() {
           <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold' }}>
             Часовий проміжок
           </Typography>
-          
+
           <TextField
             type="date"
             size="small"
@@ -159,7 +173,7 @@ export function HeatmapPage() {
           <Typography variant="body2" color="text.secondary" gutterBottom>
             Години: {hourRange[0]}:00 — {hourRange[1] === 24 ? "23:59" : `${hourRange[1]}:00`}
           </Typography>
-          
+
           <Box sx={{ px: 1 }}>
             <Slider
               value={hourRange}
@@ -189,8 +203,11 @@ export function HeatmapPage() {
             <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
               Дані у цій зоні:
             </Typography>
+            <Typography variant="body2" color="primary" sx={{ mb: 0.5, fontWeight: 'medium' }}>
+              Унікальних пристроїв: {data.stats?.uniqueDevices ?? 0}
+            </Typography>
             <Typography variant="body2">
-              Кількість точок: {data.total}
+              Всього вимірів: {data.total}
             </Typography>
             <Typography variant="body2">
               Макс. шум: {data.stats?.maxDba ? `${data.stats.maxDba} дБ` : "—"}
