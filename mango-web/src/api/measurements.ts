@@ -16,6 +16,7 @@ export type GetAcousticMeasurementsQuery = {
 export type AcousticMeasurementResponseDto = {
   id: string
   deviceId: string
+  locationId: string
   location: {
     longitude: number
     latitude: number

@@ -45,6 +45,7 @@ export type GetAcousticMeasurementsQueryDto = z.infer<typeof GetAcousticMeasurem
 export type AcousticMeasurementResponseDto = {
   id: string
   deviceId: string
+  locationId: string
   location: {
     longitude: number
     latitude: number
@@ -67,6 +68,7 @@ export function toAcousticMeasurementResponse(doc: PositionedAcousticMeasurement
   return {
     id: doc._id.toString(),
     deviceId: doc.deviceId.toString(),
+    locationId: doc.locationId.toString(),
     location: {
       longitude: doc.longitude,
       latitude: doc.latitude,
