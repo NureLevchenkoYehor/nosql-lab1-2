@@ -34,12 +34,16 @@ export type GetDeviceModelsQueryDto = z.infer<typeof GetDeviceModelsQuerySchema>
 export type DeviceModelResponseDto = {
   id: string
   name: string
+  devicesCount: number
 }
 
 // Маппінг
-export function toDeviceModelResponse(doc: DeviceModel): DeviceModelResponseDto {
+export type DeviceModelWithCount = DeviceModel & { devicesCount: number }
+
+export function toDeviceModelResponse(doc: DeviceModelWithCount): DeviceModelResponseDto {
   return {
     id: doc._id.toString(),
     name: doc.name,
+    devicesCount: doc.devicesCount ?? 0,
   }
 }

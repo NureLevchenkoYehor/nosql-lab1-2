@@ -4,6 +4,7 @@ import type { PaginatedResponse } from "./common"
 export type DeviceModel = {
   id: string
   name: string
+  devicesCount?: number
 }
 
 export type GetDeviceModelsQuery = {

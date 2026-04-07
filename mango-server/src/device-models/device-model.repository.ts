@@ -20,7 +20,7 @@ export async function createDeviceModel(db: Db, dto: CreateDeviceModelDto): Prom
 export async function getDeviceModels(
   db: Db,
   query: GetDeviceModelsQueryDto
-): Promise<PaginatedResponseDto<DeviceModel>> {
+): Promise<PaginatedResponseDto<DeviceModel & { devicesCount: number }>> {
   const filter: Record<string, unknown> = { archivedAt: null }
 
   if (query.search) {
@@ -32,8 +32,25 @@ export async function getDeviceModels(
   const skip = query.skip ?? 0
   const take = query.take ?? 20
 
-  const [result] = await db.collection<DeviceModel>(COLLECTION).aggregate([
+  const pipeline: Record<string, unknown>[] = [
     { $match: filter },
+    {
+      $lookup: {
+        from: "devices",
+        let: { modelId: "$_id" },
+        pipeline: [
+          { $match: { $expr: { $and: [{ $eq: ["$modelId", "$$modelId"] }, { $eq: ["$archivedAt", null] }] } } },
+          { $count: "count" }
+        ],
+        as: "devices"
+      }
+    },
+    {
+      $addFields: {
+        devicesCount: { $ifNull: [{ $arrayElemAt: ["$devices.count", 0] }, 0] }
+      }
+    },
+    { $project: { devices: 0 } },
     {
       $facet: {
         data: [
@@ -44,12 +61,14 @@ export async function getDeviceModels(
         total: [{ $count: "count" }],
       }
     }
-  ]).toArray()
+  ]
+
+  const [result] = await db.collection(COLLECTION).aggregate(pipeline).toArray()
 
   const total = result.total[0]?.count ?? 0
 
   return {
-    data: result.data as DeviceModel[],
+    data: result.data as (DeviceModel & { devicesCount: number })[],
     total,
   }
 }

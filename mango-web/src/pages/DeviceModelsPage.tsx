@@ -54,10 +54,15 @@ export function DeviceModelsPage() {
 
   function handleNextPage() { setQuery(prev => ({ ...prev, skip: (prev.skip ?? 0) + (prev.take ?? 10) })) }
   function handlePrevPage() { setQuery(prev => ({ ...prev, skip: Math.max(0, (prev.skip ?? 0) - (prev.take ?? 10)) })) }
-  
-  function handleDelete(id: string) {
-    if (confirm("Видалити (або архівувати) цю модель?")) {
-      deleteMutation.mutate(id)
+
+  function handleDelete(model: DeviceModel) {
+    const count = model.devicesCount ?? 0
+    const message = count > 0
+      ? `У моделі є ${count} пристроїв. Вони будуть видалені разом з моделлю. Продовжити?`
+      : "Видалити (або архівувати) цю модель?"
+
+    if (confirm(message)) {
+      deleteMutation.mutate(model.id)
     }
   }
 
@@ -94,8 +99,8 @@ export function DeviceModelsPage() {
           <Table>
             <TableHead>
               <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                <TableCell 
-                  onClick={handleSort} 
+                <TableCell
+                  onClick={handleSort}
                   sx={{ cursor: "pointer", fontWeight: "bold" }}
                 >
                   Назва моделі {query.sortOrder === "asc" ? "↑" : "↓"}
@@ -112,7 +117,7 @@ export function DeviceModelsPage() {
                       <Button size="small" variant="outlined" onClick={() => setModal({ mode: "edit", model })}>
                         Ред.
                       </Button>
-                      <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(model.id)}>
+                      <Button size="small" variant="outlined" color="error" onClick={() => handleDelete(model)}>
                         Вид.
                       </Button>
                     </Stack>
